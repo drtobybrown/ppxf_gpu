@@ -1,0 +1,14 @@
+name: ppxf_gpu
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.9
+  - numpy
+  - scipy
+  - matplotlib
+  - astropy
+  - pip
+  - pip:
+    - capfit
+    - cupy-cuda12x  # Assuming CUDA 12.x, user can adjust
