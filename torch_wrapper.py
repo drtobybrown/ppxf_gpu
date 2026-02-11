@@ -78,16 +78,33 @@ class TorchWrapper:
     
     def _map_dtype(self, dtype):
         if dtype is None: return None
-        if dtype == int: return torch.long
-        if dtype == float: return torch.float64 
-        if dtype == complex: return torch.complex128
-        # Handle pure numpy types if passed
-        if dtype == np.float64: return torch.float64
-        if dtype == np.float32: return torch.float32
-        if dtype == np.int64: return torch.long
-        if dtype == np.int32: return torch.int32
-        if dtype == np.complex128: return torch.complex128
-        if dtype == np.complex64: return torch.complex64
+        
+        # If already a torch dtype, return it
+        if isinstance(dtype, torch.dtype):
+            return dtype
+
+        # Use numpy to canonicalize the type
+        try:
+            dt = np.dtype(dtype)
+        except (TypeError, ValueError):
+            # Fallback for weird types or internal logic
+            if dtype == int: return torch.long
+            if dtype == float: return torch.float64 
+            if dtype == complex: return torch.complex128
+            return dtype
+
+        # Map numpy dtypes to torch dtypes
+        if dt == np.float64: return torch.float64
+        if dt == np.float32: return torch.float32
+        if dt == np.float16: return torch.float16
+        if dt == np.int64: return torch.long
+        if dt == np.int32: return torch.int32
+        if dt == np.int16: return torch.int16
+        if dt == np.int8: return torch.int8
+        if dt == np.complex128: return torch.complex128
+        if dt == np.complex64: return torch.complex64
+        if dt == np.bool_: return torch.bool
+        
         return dtype
 
     def _get_dtype(self, dtype):
