@@ -56,3 +56,26 @@ def verify_gpu_fallback():
 
 if __name__ == "__main__":
     verify_gpu_fallback()
+
+    # DIAGNOSTIC: Test TorchWrapper directly
+    print("\n--- TorchWrapper Diagnostic ---")
+    try:
+        try:
+            from ppxf.torch_wrapper import TorchWrapper
+        except ImportError:
+            from torch_wrapper import TorchWrapper
+            
+        tw = TorchWrapper()
+        print(f"TorchWrapper device: {tw.device}")
+        
+        z = tw.zeros((10, 10))
+        print(f"tw.zeros((10,10)) dtype: {z.dtype}")
+        
+        z_float = tw.zeros((10, 10), dtype=float)
+        print(f"tw.zeros((10,10), dtype=float) dtype: {z_float.dtype}")
+        
+        if z.dtype == torch.float32 and tw.device.type != 'mps':
+            print("CRITICAL IF: TorchWrapper defaulting to float32 on non-MPS device!")
+            
+    except Exception as e:
+        print(f"Diagnostic failed: {e}")
