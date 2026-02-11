@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ppxf"
+version = "9.4.5"
+description = "pPXF: Penalized Pixel-Fitting stellar kinematics extraction"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "astropy",
+]
+
+[project.optional-dependencies]
+gpu = ["torch"]
+
+[tool.setuptools.packages.find]
+include = ["ppxf*"]
