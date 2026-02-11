@@ -26,19 +26,22 @@ class TorchWrapper:
     def asarray(self, a, dtype=None):
         target_dtype = self._map_dtype(dtype)
         
-        # MPS does not support float64/complex128. Enforce float32/complex64.
-        if self.device.type == 'mps':
-            if target_dtype == torch.float64:
-                target_dtype = torch.float32
-            elif target_dtype == torch.complex128:
-                target_dtype = torch.complex64
-            elif target_dtype is None and not isinstance(a, torch.Tensor):
-                 # Check input dtype if available
-                 if hasattr(a, 'dtype'):
-                     if a.dtype == np.float64:
-                         target_dtype = torch.float32
-                     elif a.dtype == np.complex128:
-                         target_dtype = torch.complex64
+        # Infer dtype from input if not specified
+        if target_dtype is None and not isinstance(a, torch.Tensor):
+             if hasattr(a, 'dtype'):
+                 if a.dtype == np.float64:
+                     target_dtype = torch.float64
+                 elif a.dtype == np.float32:
+                     target_dtype = torch.float32
+                 elif a.dtype == np.complex128:
+                     target_dtype = torch.complex128
+                 elif a.dtype == np.complex64:
+                     target_dtype = torch.complex64
+                 elif a.dtype == int or a.dtype == np.int64:
+                     target_dtype = torch.long
+        
+        # Apply device constraints (MPS does not support float64/complex128)
+        target_dtype = self._apply_device_constraints(target_dtype)
         
         if isinstance(a, torch.Tensor):
             t = a.to(device=self.device, dtype=target_dtype)
@@ -53,14 +56,37 @@ class TorchWrapper:
             return a.numpy()
         return np.asarray(a)
 
-    def zeros(self, shape, dtype=None):
-        return torch.zeros(shape, device=self.device, dtype=self._map_dtype(dtype))
+    def zeros(self, shape, dtype=float):
+        # Default to float (float64) to match dict(numpy)
+        t_dtype = self._get_dtype(dtype)
+        return torch.zeros(shape, device=self.device, dtype=t_dtype)
 
-    def ones(self, shape, dtype=None):
-        return torch.ones(shape, device=self.device, dtype=self._map_dtype(dtype))
+    def ones(self, shape, dtype=float):
+        t_dtype = self._get_dtype(dtype)
+        return torch.ones(shape, device=self.device, dtype=t_dtype)
 
-    def empty(self, shape, dtype=None):
-        return torch.empty(shape, device=self.device, dtype=self._map_dtype(dtype))
+    def empty(self, shape, dtype=float):
+        t_dtype = self._get_dtype(dtype)
+        return torch.empty(shape, device=self.device, dtype=t_dtype)
+    
+    def _map_dtype(self, dtype):
+        if dtype is None: return None
+        if dtype == int: return torch.long
+        if dtype == float: return torch.float64 
+        if dtype == complex: return torch.complex128
+        return dtype
+
+    def _get_dtype(self, dtype):
+        t_dtype = self._map_dtype(dtype)
+        return self._apply_device_constraints(t_dtype)
+
+    def _apply_device_constraints(self, dtype):
+        if self.device.type == 'mps':
+            if dtype == torch.float64:
+                return torch.float32
+            if dtype == torch.complex128:
+                return torch.complex64
+        return dtype
     
     def arange(self, *args, **kwargs):
         # torch.arange args are slightly different if only one arg is passed? 
