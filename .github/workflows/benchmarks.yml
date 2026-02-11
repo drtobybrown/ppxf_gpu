@@ -38,7 +38,7 @@ jobs:
         # Install pPXF in editable mode
         pip install -e .
 
-    - name: Verify GPU Fallback (Expected: CPU)
+    - name: "Verify GPU Fallback (Expected: CPU)"
       run: |
         python benchmarks/verify_gpu_fallback.py
       continue-on-error: true # Might fail if script asserts GPU presence, but output is useful
