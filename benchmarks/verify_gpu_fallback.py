@@ -60,6 +60,8 @@ if __name__ == "__main__":
     # DIAGNOSTIC: Test TorchWrapper directly
     print("\n--- TorchWrapper Diagnostic ---")
     try:
+        import torch
+        import numpy as np
         try:
             from ppxf.torch_wrapper import TorchWrapper
         except ImportError:
@@ -73,6 +75,9 @@ if __name__ == "__main__":
         
         z_float = tw.zeros((10, 10), dtype=float)
         print(f"tw.zeros((10,10), dtype=float) dtype: {z_float.dtype}")
+        
+        z_np = tw.zeros((10, 10), dtype=np.float64)
+        print(f"tw.zeros((10,10), dtype=np.float64) dtype: {z_np.dtype}")
         
         if z.dtype == torch.float32 and tw.device.type != 'mps':
             print("CRITICAL IF: TorchWrapper defaulting to float32 on non-MPS device!")

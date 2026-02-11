@@ -64,6 +64,8 @@ class TorchWrapper:
     def zeros(self, shape, dtype=float):
         # Default to float (float64) to match dict(numpy)
         t_dtype = self._get_dtype(dtype)
+        # DEBUG
+        print(f"DEBUG: TorchWrapper.zeros requested dtype={dtype} mapped to {t_dtype} on device {self.device}")
         return torch.zeros(shape, device=self.device, dtype=t_dtype)
 
     def ones(self, shape, dtype=float):
@@ -79,11 +81,20 @@ class TorchWrapper:
         if dtype == int: return torch.long
         if dtype == float: return torch.float64 
         if dtype == complex: return torch.complex128
+        # Handle pure numpy types if passed
+        if dtype == np.float64: return torch.float64
+        if dtype == np.float32: return torch.float32
+        if dtype == np.int64: return torch.long
+        if dtype == np.int32: return torch.int32
+        if dtype == np.complex128: return torch.complex128
+        if dtype == np.complex64: return torch.complex64
         return dtype
 
     def _get_dtype(self, dtype):
         t_dtype = self._map_dtype(dtype)
-        return self._apply_device_constraints(t_dtype)
+        res = self._apply_device_constraints(t_dtype)
+        # print(f"DEBUG: _get_dtype({dtype}) -> mapped {t_dtype} -> constrained {res}")
+        return res
 
     def _apply_device_constraints(self, dtype):
         if self.device.type == 'mps':
