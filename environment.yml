@@ -11,4 +11,7 @@ dependencies:
   - pip
   - pip:
     - capfit
-    - cupy-cuda12x  # Assuming CUDA 12.x, user can adjust
+    - torch         # For Mac/MPS GPU acceleration
+    - jax           # JAX framework
+    - jaxlib        # JAX library backend
+    - jax-metal     # JAX Metal plugin for Mac GPU
