@@ -18,5 +18,8 @@ dependencies = [
 [project.optional-dependencies]
 gpu = ["torch"]
 
-[tool.setuptools.packages.find]
-include = ["ppxf*"]
+[tool.setuptools]
+packages = ["ppxf"]
+
+[tool.setuptools.package-dir]
+ppxf = "."
