@@ -89,17 +89,33 @@ class TorchWrapper:
         return dtype
     
     def arange(self, *args, **kwargs):
-        # torch.arange args are slightly different if only one arg is passed? 
-        # range(start, end, step) vs arange(end). 
-        # torch.arange([start=0], end, [step=1]) similar to numpy.
+        # Default to int64 for integer args, but if float args, torch.arange might default to float32.
+        # NumPy behavior: if args are ints, return int/int64. If oats, return float64.
+        # For simplicity and given pPXF usage (often for indices or float ranges), 
+        # let's rely on torch's inference but ensuring floats are float64 if device supports it.
+        # However, torch.arange(float) -> float32 by default.
+        # We should check args.
+        
+        dtype = kwargs.get('dtype')
+        if dtype is None:
+             # Check if any arg is float
+             is_float = any(isinstance(a, float) for a in args)
+             if is_float:
+                 dtype = float 
+        
+        if dtype is not None:
+             kwargs['dtype'] = self._get_dtype(dtype)
+             
         return torch.arange(*args, device=self.device, **kwargs)
 
     def linspace(self, start, end, steps, **kwargs):
+        # Default to float64
+        dtype = kwargs.get('dtype', float)
+        kwargs['dtype'] = self._get_dtype(dtype)
         return torch.linspace(start, end, steps, device=self.device, **kwargs)
 
     def array(self, object, dtype=None, copy=True, order='K', subok=False, ndmin=0):
         # Limited implementation of np.array
-        # copy, order, subok, ndmin ignored for now
         return self.asarray(object, dtype=dtype)
     
     def append(self, arr, values, axis=None):
