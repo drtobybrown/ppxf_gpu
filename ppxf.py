@@ -2604,6 +2604,9 @@ class ppxf:
                 aa = a[self.goodpixels, :]
                 bb = b[self.goodpixels]
             self.weights = self.solve_linear(aa, bb, npoly)
+            # DEBUG: Check dtypes before crash
+            if self.gpu:
+                print(f"DEBUG: device={self.xp.device}, c.dtype={c.dtype}, weights.dtype={self.weights.dtype}")
             self.bestfit = c @ self.weights
             if self.noise.ndim == 2:
                 # input NOISE is a npix*npix covariance matrix
