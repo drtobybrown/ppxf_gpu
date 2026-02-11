@@ -77,14 +77,24 @@ def benchmark_sdss(n_iterations=10):
     goodpixels = util.determine_goodpixels(np.log(lam_gal), lam_range_temp)
     
     # Benchmark loop
+    try:
+        import torch
+        HAS_GPU = torch.cuda.is_available() or torch.backends.mps.is_available()
+    except ImportError:
+        HAS_GPU = False
+
+    if not HAS_GPU:
+        print("WARNING: No GPU detected. Benchmarking in CPU mode.")
+
     start_time = time.perf_counter()
     
     for i in range(n_iterations):
         vel = 0
         start = [vel, 200.]
+        pp_start = time.perf_counter()
         pp = ppxf(sps.templates, galaxy, noise, velscale, start,
                   goodpixels=goodpixels, plot=False, moments=4, trig=1,
-                  degree=20, lam=lam_gal, lam_temp=sps.lam_temp)
+                  degree=20, lam=lam_gal, lam_temp=sps.lam_temp, gpu=HAS_GPU)
                   
     end_time = time.perf_counter()
     total_time = end_time - start_time

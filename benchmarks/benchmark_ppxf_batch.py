@@ -250,4 +250,16 @@ def generate_plots(ns, seq_times, batch_times, output_dir):
 
 
 if __name__ == "__main__":
-    benchmark(n_spectra_list=[5, 10, 20], gpu=True)
+    # Check for GPU
+    try:
+        import torch
+        has_gpu = torch.cuda.is_available() or torch.backends.mps.is_available()
+    except ImportError:
+        has_gpu = False
+
+    use_gpu = True
+    if not has_gpu:
+        print("\nWARNING: No GPU detected. Running benchmark in CPU mode.")
+        use_gpu = False
+
+    benchmark(n_spectra_list=[5, 10, 20], gpu=use_gpu)

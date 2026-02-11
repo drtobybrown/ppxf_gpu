@@ -73,87 +73,99 @@ def verify_ppxf():
     sps = lib.sps_lib(filename_sps, velscale, fwhm_gal_dict, lam_range=lam_range_temp)
     goodpixels = util.determine_goodpixels(np.log(lam_gal), lam_range_temp)
 
-    # --- Run CPU Fit ---
+    # --- Run pPXF on CPU ---
     print("Running pPXF on CPU...")
     vel = 0
     start = [vel, 200.]
-    t_cpu_start = clock()
+    # Force CPU execution
+    start_cpu = clock()
     pp_cpu = ppxf(sps.templates, galaxy, noise, velscale, start,
               goodpixels=goodpixels, plot=False, moments=4, trig=1,
               degree=20, lam=lam_gal, lam_temp=sps.lam_temp, gpu=False)
-    t_cpu = clock() - t_cpu_start
+    print(" Best Fit:       Vel     sigma        h3        h4")
+    print(f" comp.  0:    {pp_cpu.sol[0]:6.0f}    {pp_cpu.sol[1]:6.0f}    {pp_cpu.sol[2]:6.3f}     {pp_cpu.sol[3]:5.3f}")
+    print(f"chi2/DOF: {pp_cpu.chi2:.4g}; DOF: {pp_cpu.dof}; degree = {pp_cpu.degree}; mdegree = {pp_cpu.mdegree}")
+    print(f"method = {pp_cpu.method}; Jac calls: {pp_cpu.njev}; Func calls: {pp_cpu.nfev}; Status: {pp_cpu.status}")
+    print(f"linear_method = {pp_cpu.linear_method}; Nonzero Templates (>0.1%): {np.sum(pp_cpu.weights > 0.001*np.max(pp_cpu.weights))}/{len(pp_cpu.weights)}")
+    t_cpu = clock() - start_cpu
     print(f"CPU Time: {t_cpu:.4f} s")
 
-    # --- Run GPU Fit ---
+    # Check available GPU devices
+    import torch
+    has_gpu = torch.cuda.is_available() or torch.backends.mps.is_available()
+    
+    if not has_gpu:
+        print("\nNo GPU detected. Skipping GPU verification.")
+        return
+
+    # --- Run pPXF on GPU ---
     print("Running pPXF on GPU...")
     t_gpu_start = clock()
     pp_gpu = ppxf(sps.templates, galaxy, noise, velscale, start,
               goodpixels=goodpixels, plot=False, moments=4, trig=1,
               degree=20, lam=lam_gal, lam_temp=sps.lam_temp, gpu=True)
+    
+    # ... (print results) ...
+    print(f" Best Fit:       Vel     sigma        h3        h4")
+    print(f" comp.  0:    {pp_gpu.sol[0]:6.0f}    {pp_gpu.sol[1]:6.0f}    {pp_gpu.sol[2]:6.3f}     {pp_gpu.sol[3]:5.3f}")
+    print(f"chi2/DOF: {pp_gpu.chi2:.4g}; DOF: {pp_gpu.dof}; degree = {pp_gpu.degree}; mdegree = {pp_gpu.mdegree}")
+    print(f"method = {pp_gpu.method}; Jac calls: {pp_gpu.njev}; Func calls: {pp_gpu.nfev}; Status: {pp_gpu.status}")
+    print(f"linear_method = {pp_gpu.linear_method}; Nonzero Templates (>0.1%): {np.sum(pp_gpu.weights > 0.001*np.max(pp_gpu.weights))}/{len(pp_gpu.weights)}")
     t_gpu = clock() - t_gpu_start
     print(f"GPU Time: {t_gpu:.4f} s")
+    
+    # Verify GPU was actually used
     print(f"GPU used: {pp_gpu.gpu}")
-    if pp_gpu.gpu:
+    if hasattr(pp_gpu, 'xp'):
          print(f"Backend: {pp_gpu.xp.__name__ if hasattr(pp_gpu.xp, '__name__') else type(pp_gpu.xp)}")
 
     # --- Compare Results ---
     print("Comparing results...")
     
-    # 1. Bestfit
-    diff_bestfit = np.abs(pp_cpu.bestfit - pp_gpu.bestfit)
-    max_diff_bestfit = np.max(diff_bestfit)
-    print(f"Max abs diff (bestfit): {max_diff_bestfit:.2e}")
-    
+    # 1. Bestfit (reconstructed spectrum)
+    diff_bestfit = np.max(np.abs(pp_cpu.bestfit - pp_gpu.bestfit))
+    print(f"Max abs diff (bestfit): {diff_bestfit:.2e}")
+
     # 2. Chi2
     diff_chi2 = np.abs(pp_cpu.chi2 - pp_gpu.chi2)
     print(f"Diff Chi2: {diff_chi2:.2e}")
-    
-    # 3. Kinematic Solution
+
+    # 3. Best solution (kinematics)
     diff_sol = np.abs(pp_cpu.sol - pp_gpu.sol)
     print(f"Diff Sol: {diff_sol}")
     
-    TOLERANCE = 1e-4
-    if max_diff_bestfit < TOLERANCE:
+    TOLERANCE = 1e-4  # Adjust as needed fitting uncertanties etc
+    if diff_bestfit < TOLERANCE and diff_chi2 < TOLERANCE:
         print("PASS: Results match within tolerance.")
     else:
-        print("FAIL: Results differ significantly!")
-
-    # --- Plotting ---
+        print("FAIL: Results differ significantly.")
+        
+    # --- Generate Plots ---
     print("Generating plots...")
-    
-    # Plot 1: Bestfit Comparison & Residuals
-    plt.figure(figsize=(12, 8))
-    
-    plt.subplot(211)
-    plt.plot(pp_cpu.lam, pp_cpu.galaxy, 'k-', label='Galaxy', alpha=0.5)
-    plt.plot(pp_cpu.lam, pp_cpu.bestfit, 'r-', label='CPU Bestfit')
-    plt.plot(pp_gpu.lam, pp_gpu.bestfit, 'b--', label='GPU Bestfit')
+
+    # Plot 1: Overlay Best Fits
+    plt.figure(figsize=(10, 6))
+    plt.plot(lam_gal, pp_cpu.bestfit, 'k-', label='CPU', linewidth=2, alpha=0.7)
+    plt.plot(lam_gal, pp_gpu.bestfit, 'r--', label='GPU', linewidth=2, alpha=0.7)
+    # plt.plot(lam_gal, galaxy, 'g-', label='Data', alpha=0.3) 
     plt.legend()
-    plt.title("Fit Comparison")
-    plt.ylabel("Flux")
-    
-    plt.subplot(212)
-    plt.plot(pp_cpu.lam, pp_cpu.galaxy - pp_cpu.bestfit, 'r-', label='CPU Residual', alpha=0.5)
-    plt.plot(pp_gpu.lam, pp_gpu.galaxy - pp_gpu.bestfit, 'b--', label='GPU Residual', alpha=0.5)
-    plt.plot(pp_cpu.lam, pp_cpu.bestfit - pp_gpu.bestfit, 'g-', label='CPU - GPU Diff')
-    plt.legend()
-    plt.title(f"Residuals (Max Diff: {max_diff_bestfit:.2e})")
+    plt.title(f"CPU vs GPU Best Fit Comparison\nMax Diff: {diff_bestfit:.2e}")
     plt.xlabel("Wavelength")
-    
-    plt.tight_layout()
+    plt.ylabel("Flux")
     plt.savefig('verification_report.png')
     print("Saved verification_report.png")
-    
-    # Plot 2: Performance
+
+    # Plot 2: Performance Bar Chart
     plt.figure(figsize=(8, 6))
-    methods = ['CPU', 'GPU']
+    labels = ['CPU', 'GPU']
     times = [t_cpu, t_gpu]
+    colors = ['gray', 'green']
     
-    plt.bar(methods, times, color=['red', 'blue'])
+    plt.bar(labels, times, color=colors)
     plt.ylabel("Time (s)")
-    plt.title(f"Performance Comparison\nSpeedup: {t_cpu/t_gpu:.2f}x")
+    plt.title(f"pPXF Performance Comparison\nSpeedup: {t_cpu/t_gpu:.2f}x")
     for i, v in enumerate(times):
-        plt.text(i, v + 0.05, f"{v:.2f}s", ha='center')
+        plt.text(i, v + 0.05, f"{v:.4f} s", ha='center')
         
     plt.savefig('performance_comparison.png')
     print("Saved performance_comparison.png")
