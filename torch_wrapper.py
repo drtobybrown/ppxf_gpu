@@ -94,16 +94,16 @@ class TorchWrapper:
             return dtype
 
         # Map numpy dtypes to torch dtypes
-        if dt == np.float64: return torch.float64
-        if dt == np.float32: return torch.float32
-        if dt == np.float16: return torch.float16
-        if dt == np.int64: return torch.long
-        if dt == np.int32: return torch.int32
-        if dt == np.int16: return torch.int16
-        if dt == np.int8: return torch.int8
-        if dt == np.complex128: return torch.complex128
-        if dt == np.complex64: return torch.complex64
-        if dt == np.bool_: return torch.bool
+        if dt == np.dtype('float64'): return torch.float64
+        if dt == np.dtype('float32'): return torch.float32
+        if dt == np.dtype('float16'): return torch.float16
+        if dt == np.dtype('int64'): return torch.long
+        if dt == np.dtype('int32'): return torch.int32
+        if dt == np.dtype('int16'): return torch.int16
+        if dt == np.dtype('int8'): return torch.int8
+        if dt == np.dtype('complex128'): return torch.complex128
+        if dt == np.dtype('complex64'): return torch.complex64
+        if dt == np.dtype('bool'): return torch.bool
         
         return dtype
 
